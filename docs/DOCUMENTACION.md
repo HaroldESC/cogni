@@ -1022,7 +1022,7 @@ Reglas:
 
 | Fase | Contenido | Estado |
 |---|---|---|
-| **F0 — Setup** | Proyecto Flutter escritorio, tooling y CI; los criterios para darla por cerrada están en §8.1 | ⬜ |
+| **F0 — Setup** | Proyecto Flutter escritorio, tooling y CI; los criterios para darla por cerrada están en §8.1 | ✅ |
 | **F1 — Datos** | Tablas Drift (`game_progress`, `game_sessions`, `settings`) **con `uuid`/`updated_at`/`deleted_at` de entrada (D-015)**, conexión escritorio, repositorios (incl. export/import, §5.5), seeds | ⬜ |
 | **F2 — Framework** | Contrato `Game`, motor de sesiones, progreso/checkpoints, eventos y `DigitSequence` (§3.4) | ⬜ |
 | **F3 — Juego π** | UI: secuencia, numpad iluminado **y teclado físico (§3.5)**, validación, checkpoint=20, guardado y retoma. **Explícito:** asset `pi.txt` (10.000 dígitos) + `AssetDigitSequence` + test de integridad (§3.4) y botones Exportar/Importar en Ajustes (§5.5) | ⬜ |
@@ -1061,11 +1061,11 @@ Cada uno tiene su decisión en §2; ninguno debería quedar «a medias».
    escritos en `AGENTS.md` §7, y `docs/progress.md` existe con su plantilla para el registro
    de tareas (§6 de `AGENTS.md`).
 
-> *Estado 2026-10-02: implementación y verificación local completas — `dart format`
-> estable, `flutter analyze --fatal-infos` sin incidencias, `flutter test` en verde y
-> codegen sin diffs. El arranque se ha verificado con `flutter build windows --debug`
-> y ejecutando el binario generado. Queda por verificar que la pipeline remota pase
-> en verde (falta el repositorio en GitHub).*
+> *Estado 2026-10-03: **F0 cerrada** — los siete puntos se cumplen. Formato,
+> `flutter analyze --fatal-infos` y `flutter test` (15 tests) en verde en local;
+> codegen sin diffs tras regenerar; arranque verificado con `flutter build windows
+> --debug` y ejecutando el binario; pipeline de §4 **passing** en GitHub Actions
+> sobre `main`.*
 
 ---
 
@@ -1142,5 +1142,5 @@ inglés (D-027).
 
 ---
 
-> **Última actualización:** 2026-10-02.
+> **Última actualización:** 2026-10-03.
 > Este documento se actualiza **junto con** cada decisión nueva (añadir fila en §2).

@@ -28,5 +28,5 @@ Este archivo no se poda: es el historial de lo que se ha hecho y cuándo.
 
 Tras revisión independiente (`reviewer`) se corrigieron: router `static final` → `routerProvider` (patrón §6, evita fuga de estado entre tests), `Semantics` redundante sobre el `Text` (duplicaba el anuncio; D-028 aplica a lo interactivo) y doc comment del tema que prometía contraste AA sin comprobarlo — ahora se comprueba en `test/core/theme/app_theme_test.dart` (14 pares, claro y oscuro, ≥ 4.5:1; el par con `background` se omitió porque `ColorScheme.background` está deprecado desde Flutter 3.18).
 
-**Pendientes para cerrar F0:** crear el remoto de GitHub para ver la pipeline de §4 en verde (§8.1.6) — es el único punto de §8.1 que queda abierto. El arranque (§8.1.2) se verificó con `flutter build windows --debug` y ejecutando el binario.
+**Pendientes para cerrar F0:** ninguno. El arranque (§8.1.2) se verificó con `flutter build windows --debug` y ejecutando el binario, y la pipeline de §4 está **passing** en GitHub Actions sobre `main` (§8.1.6). F0 marcada como cerrada en §8.
 
