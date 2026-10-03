@@ -1,0 +1,54 @@
+# CI de Cogni.
+#
+# Reproduce exactamente la puerta que exige AGENTS.md §5 antes de integrar:
+# formato, `analyze --fatal-infos`, tests y codegen sin diffs (D-018, D-026).
+# `main` nunca se integra roto (D-031).
+#
+# No hay job de build de Windows: los runners Linux no compilan el runner de
+# escritorio y la imagen no trae el SDK de Visual Studio. Como Cogni es
+# escritorio primero (D-007), la compilación de escritorio se verifica en local
+# con `flutter build windows`.
+
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  analyze-test:
+    name: Formato, análisis y tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Instalar Flutter (stable, con caché del SDK)
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Resolver dependencias
+        run: flutter pub get
+
+      - name: Generar las localizaciones (D-027)
+        run: flutter gen-l10n
+
+      - name: Regenerar el código generado (D-018)
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Comprobar que el código generado está al día
+        run: git diff --exit-code
+
+      - name: Comprobar el formato
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Análisis estático
+        run: flutter analyze --fatal-infos
+
+      - name: Tests
+        run: flutter test

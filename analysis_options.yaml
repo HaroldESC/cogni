@@ -1,0 +1,13 @@
+# Fuente de verdad de las reglas de lint: very_good_analysis (D-026).
+include: package:very_good_analysis/analysis_options.yaml
+
+# NOTA: `lib/l10n/generated/**` NO se excluye a propósito: el análisis debe
+# cubrir también el código generado de localización para no ocultar problemas
+# reales a `flutter analyze --fatal-infos` (D-026, D-032).
+analyzer:
+  exclude:
+    - build/**
+    - windows/**
+    - macos/**
+    - linux/**
+    - '**/*.g.dart'
