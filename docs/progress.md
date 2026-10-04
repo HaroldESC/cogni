@@ -30,3 +30,23 @@ Tras revisión independiente (`reviewer`) se corrigieron: router `static final` 
 
 **Pendientes para cerrar F0:** ninguno. El arranque (§8.1.2) se verificó con `flutter build windows --debug` y ejecutando el binario, y la pipeline de §4 está **passing** en GitHub Actions sobre `main` (§8.1.6). F0 marcada como cerrada en §8.
 
+---
+
+### Cierre de F1 — capa de datos completa (A1 + A2 + backup)
+**Fecha:** 2026-10-03
+**Resumen:** Fase F1 completada y cerrada: esquema Drift v1 con identidad global, DAOs, los tres repositorios como único punto de escritura, backup export/import con auto-copia (D-035) y su validación estricta (D-037). Revisión independiente (`reviewer`) sin blockers; sus findings se corrigieron todos antes de cerrar.
+**Archivos creados:**
+- lib/data/db/tables/game_progress.dart, game_sessions.dart, settings.dart
+- lib/data/db/app_database.dart, lib/data/db/connection.dart
+- lib/data/dao/game_progress_dao.dart, game_sessions_dao.dart, settings_dao.dart
+- lib/data/repositories/game_session_repository.dart, game_progress_repository.dart, settings_repository.dart, backup_codec.dart, backup_repository.dart
+- lib/data/providers.dart
+- test/data/db/app_database_test.dart, test/data/helpers/test_database.dart
+- test/data/repositories/game_session_repository_test.dart, game_progress_repository_test.dart, settings_repository_test.dart, backup_codec_test.dart, backup_repository_test.dart
+**Archivos modificados:**
+- lib/data/dao/settings_dao.dart (upsert por companion; permite reactivar tombstones con `deletedAt: Value(null)`)
+- docs/DOCUMENTACION.md (§2 D-033…D-037, §4 stack, §5.2/§5.4.1/§5.5, §8 fila F1, §8.2 criterios, §9 fila 7)
+- AGENTS.md (§2 stack: sin `sqlite3_flutter_libs`, `path` + `path_provider`)
+- build.yaml (`store_date_time_values_as_text`, D-033), pubspec.yaml (drift 2.35.1, path, path_provider, uuid)
+**Tests:** 57/57 pasando (15 de F0 + 23 de esquema/DAOs + 19 de repositorios)
+**Notas:** Puerta completa en verde: `dart format` 0 cambios, `flutter analyze --fatal-infos` 0 issues, `flutter test` 57/57, `build_runner` sin diffs en generados (D-018), `flutter build windows` compila (Release). Nuevas decisiones de la fase: D-033 (fechas ISO-8601 UTC), D-034 (sin `sqlite3_flutter_libs`), D-035 (`BackupCodec`/`BackupRepository`), D-036 (`settings` como JSON), D-037 (import estricto: duplicados y negativos rechazados antes de escribir). Correcciones post-revisión: `record` atómico en transacción (monotonía §5.4.2 verificada con un probe: sin transacción la escritura se perdía), `_decode` con `FormatException` en vez de `TypeError`, desempate por UUID en el degradado de activas duplicadas. Quedan para F3 los botones de Ajustes y la confirmación explícita del import (§5.5/§8.2).

@@ -22,9 +22,10 @@ Registro de cambios de funcionalidades: `docs/progress.md`.
 | UI | Flutter (stable), escritorio primero |
 | Estado | `flutter_riverpod` + `riverpod_annotation` (`@riverpod`) |
 | Navegación | `go_router` (D-025) |
-| Persistencia | `drift` + `drift_dev` + `sqlite3_flutter_libs` |
+| Persistencia | `drift` + `drift_dev` (sin `sqlite3_flutter_libs`, D-034) |
 | Codegen | `build_runner` |
 | Identidad global | `uuid` (v4, client-generated) |
+| Rutas de ficheros | `path` + `path_provider` (`app.db`, auto-copia de backup) |
 | Motor de juego | Flutter puro (sin Flame en v1, D-006) |
 | L10n | `gen_l10n` (ARB) + `flutter_localizations` (D-027) |
 | Lint | `very_good_analysis` (D-026), `flutter analyze --fatal-infos` |

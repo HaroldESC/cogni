@@ -80,6 +80,11 @@ Memorización            Cálculo                 Álgebra / Trigo / etc (futuro
 | D-020 | Fuente de las secuencias (π, e, √2) | **Asset `.txt`** por secuencia (`assets/sequences/`) bajo el contrato `DigitSequence` (§3.4). A, C, D y E descartadas — análisis en §9.1 | ✅ Decidido |
 | D-021 | Carga de las secuencias | **Precarga en `main.dart`** antes de `runApp`: el controlador recibe un `DigitSequence` resuelto y su código queda síncrono; fallo legible al arrancar. Plan B (`AsyncValue`) documentada en §3.4 | ✅ Decidido |
 | D-024 | Backup del progreso | **Export a JSON** versionado desde Ajustes; **import en v1 = *restaurar*** (con confirmación y auto-copia). *Fusionar* dos imports ⚠️ futuro (§5.5) | ✅ Decidido |
+| D-033 | Fechas en Drift | `store_date_time_values_as_text: true` en `build.yaml`: los `DateTime` se guardan como **texto ISO-8601 en UTC** (no unix timestamps) — se preserva la «UTCness», los timestamps de sync comparan texto de forma determinista (§5.4) y el backup queda legible. Se decide en F1, antes de la primera migración (§9, fila 7) | ✅ Decidido |
+| D-034 | SQLite en escritorio | **Sin `sqlite3_flutter_libs`**: está obsoleto desde `package:sqlite3` 3.x, que empaqueta el binario de SQLite con sus hooks de Dart. El spike de `NativeDatabase.memory()` en `flutter test` lo verifica (§4) | ✅ Decidido |
+| D-035 | Implementación del backup | `BackupCodec` (codificación/decodificación + validación de `format`/`format_version`) y `BackupRepository` (export/import + auto-copia `cogni-preimport-<fecha>.json` antes de tocar nada) en `lib/data/repositories/`; desarrolla D-024 y §5.5 | ✅ Decidido |
+| D-036 | Valores de `settings` | `settings.value` guarda **JSON serializado** (`20`, `1000`, `"system"`): un formato único para seeds, lectura tipada y export (§5.2) | ✅ Decidido |
+| D-037 | Estrictitud del import | Un backup con **filas que esta app no entiende** se rechaza con `FormatException` legible **antes** de la auto-copia y de la transacción: claves naturales duplicadas en `game_progress` (`game_id`,`mode`) o `settings` (`key`) y valores negativos en `unlocked_up_to`/`best_score` → error, nunca resolución silenciosa vía `ON CONFLICT` (§5.5: «error legible, no importar a ver qué sale») | ✅ Decidido |
 
 ### Juegos y features
 
@@ -474,9 +479,10 @@ que exista. No es una fase de accesibilidad: es no dejar que se acumule.
 | Estado | `flutter_riverpod` + `riverpod_annotation` | Código generado (`@riverpod`) |
 | Navegación | `go_router` | Rutas declarativas y back de escritorio ya resueltos (D-025) |
 | Localización | `gen_l10n` (ARB) + `flutter_localizations` | `intl` solo cuando haya un 2º idioma (D-027) |
-| Persistencia | `drift` + `drift_dev` + `sqlite3_flutter_libs` | SQLite embebido |
+| Persistencia | `drift` + `drift_dev` | SQLite embebido; binario por los hooks de `package:sqlite3` 3.x, **sin** `sqlite3_flutter_libs` (obsoleto, D-034) |
 | Codegen | `build_runner` | Un solo comando para ambas cosas |
 | Identidad global | `uuid` (paquete pub) | UUID v4 client-generated para sync (D-015) |
+| Rutas de ficheros | `path` + `path_provider` | `getApplicationSupportDirectory()` para `app.db` y la auto-copia del backup (consecuencia de D-034 y §8.2) |
 | Motor de juego | Flutter puro | Flame excluido de la v1 |
 | Testing | `flutter_test` + `test` + `crypto` | Lógica pura con `test`; `crypto` solo en `dev_dependencies` (SHA-256 de assets, D-022) |
 | Linting | `very_good_analysis` | Estricto y coherente con el estilo del doc; `analyze --fatal-infos` en CI (D-026) |
@@ -752,7 +758,7 @@ Al superar 100  →  game_progress.unlocked_up_to pasa de 100 a 120...
 | Columna | Tipo | Descripción |
 |---|---|---|
 | `key` | `TEXT PK` | p. ej. `pi.checkpoint_every`; con namespacing es **clave global** (D-015) |
-| `value` | `TEXT` | valor serializado (JSON/texto) |
+| `value` | `TEXT` | valor serializado (JSON, D-036) |
 | `updated_at` | `DATETIME NOT NULL` | |
 | `deleted_at` | `DATETIME?` | *tombstone*; `NULL` = ajuste presente (§5.4) |
 
@@ -864,8 +870,8 @@ Consecuencias deliberadas:
    borrado; el `DELETE` físico se deja para la poda, y solo tras confirmar replicación.
 4. **Un único punto de escritura** (§3.1): solo los repositorios tocan Drift, así que el
    día que haya sync el cambio es *añadir transporte*, no migrar esquema.
-5. `store_date_time_values_as_text` recomendado en `build.yaml` (ISO-8601): los timestamps
-   de sync comparan texto de forma determinísticamente ordenable. ⚠️ *decidir en F1 — §9, fila 7*.
+5. `store_date_time_values_as_text: true` en `build.yaml` (ISO-8601): los timestamps
+   de sync comparan texto de forma determinísticamente ordenable. Decidido en F1 (D-033).
 
 #### 5.4.2. Política de conflictos prevista
 
@@ -941,6 +947,14 @@ Reglas:
   error legible y no se importa. Nada de `json.decode` a ciegas encima de la base.
 - **No es sync.** Es un archivo que mueve el usuario a mano; no cambia nada de D-010 ni de
   la política de conflictos de §5.4.
+
+**Implementación (F1, D-035):** `BackupCodec` serializa/parsea el JSON y valida
+`format`/`format_version` (nada de `json.decode` a ciegas encima de la base);
+`BackupRepository` ejecuta el export puro y el import *restaurar* con la auto-copia
+`cogni-preimport-<fecha>.json` al directorio de datos previa a cualquier escritura,
+y rechaza con `FormatException` las filas duplicadas o negativas antes de escribir
+(D-037). **La confirmación explícita y los botones de Ajustes quedan para F3** (§8):
+esta capa solo restaura.
 
 ---
 
@@ -1023,7 +1037,7 @@ Reglas:
 | Fase | Contenido | Estado |
 |---|---|---|
 | **F0 — Setup** | Proyecto Flutter escritorio, tooling y CI; los criterios para darla por cerrada están en §8.1 | ✅ |
-| **F1 — Datos** | Tablas Drift (`game_progress`, `game_sessions`, `settings`) **con `uuid`/`updated_at`/`deleted_at` de entrada (D-015)**, conexión escritorio, repositorios (incl. export/import, §5.5), seeds | ⬜ |
+| **F1 — Datos** | Tablas Drift (`game_progress`, `game_sessions`, `settings`) **con `uuid`/`updated_at`/`deleted_at` de entrada (D-015)**, conexión escritorio, repositorios (incl. export/import, §5.5), seeds | ✅ |
 | **F2 — Framework** | Contrato `Game`, motor de sesiones, progreso/checkpoints, eventos y `DigitSequence` (§3.4) | ⬜ |
 | **F3 — Juego π** | UI: secuencia, numpad iluminado **y teclado físico (§3.5)**, validación, checkpoint=20, guardado y retoma. **Explícito:** asset `pi.txt` (10.000 dígitos) + `AssetDigitSequence` + test de integridad (§3.4) y botones Exportar/Importar en Ajustes (§5.5) | ⬜ |
 | **F4 — Juego sumas** | Rondas con velocidad/dificultad, puntuación (valida que el framework es reutilizable); reutiliza la entrada de F3 (§3.5) | ⬜ |
@@ -1067,6 +1081,37 @@ Cada uno tiene su decisión en §2; ninguno debería quedar «a medias».
 > --debug` y ejecutando el binario; pipeline de §4 **passing** en GitHub Actions
 > sobre `main`.*
 
+### 8.2. Criterios de aceptación de F1
+
+F1 se da por cerrada cuando, **desde un checkout limpio**, se cumplen estos seis puntos:
+
+1. **Esquema v1 completo**: `game_progress`, `game_sessions` y `settings` con
+   `uuid`/`updated_at`/`deleted_at` donde corresponde (D-015), identidad global
+   (`uuid` PK en sesiones, `(game_id, mode)` único en progreso, `key` PK en ajustes)
+   y el índice parcial `idx_one_active_session` declarado en el esquema (D-019),
+   con `schemaVersion 1` y seeds de §5.2 escritas en `onCreate`.
+2. **Conexión de escritorio**: `app.db` en `getApplicationSupportDirectory()` con
+   isolate de fondo (`lib/data/db/connection.dart`); los tests usan
+   `NativeDatabase.memory()` y pasan sin binarios adicionales (spike de `sqlite3`
+   sobre hooks de Dart, D-034).
+3. **Repositorios como único punto de escritura** (§3.1): `game_session_repository`
+   (uuid v4 y `updated_at` en UTC — D-033 —, degrada la activa a `abandoned` antes
+   de insertar, jamás `paused` — D-017), `game_progress_repository` (campos
+   monotónicos con `MAX`, revive tombstones) y `settings_repository` (JSON tipado,
+   D-036). Ningún notifier ni widget toca Drift.
+4. **Export/import**: `BackupCodec` valida `format`/`format_version` antes de
+   escribir y `BackupRepository` hace el export puro, el import *restaurar* con la
+   auto-copia `cogni-preimport-<fecha>.json` previa y el rechazo de filas
+   duplicadas/negativas antes de tocar la base (§5.5, D-024, D-035, D-037). La
+   confirmación explícita y los botones de Ajustes quedan para F3 (§8).
+5. **Puerta verde**: `dart run build_runner build --delete-conflicting-outputs` +
+   `git diff --exit-code` sin diffs (D-018), `dart format --output=none
+   --set-exit-if-changed .`, `flutter analyze --fatal-infos` y `flutter test`
+   pasan; y `flutter build windows` compila (D-007).
+6. **Documentación al día**: D-033…D-037 registradas en §2, §9 fila 7 cerrada,
+   `docs/progress.md` con la entrada de F1 y revisión independiente (`reviewer`)
+   sin findings abiertos.
+
 ---
 
 ## 9. Decisiones pendientes (abiertas)
@@ -1079,7 +1124,7 @@ Cada uno tiene su decisión en §2; ninguno debería quedar «a medias».
 | 4 | Versionado y releases | Propuesta en §4: `pubspec.yaml` como fuente única, `CHANGELOG.md`, `tool/bump_version.dart` y Release por tag `v*` | F7 |
 | 5 | Sync futuro | Backend (Firebase/Supabase/API propia) y relojes (LWW simple vs HLC) — el esquema y la política de conflictos ya están fijados en §5.4 | Cuando se necesite |
 | 6 | Import de progreso | ¿Solo *restaurar* (v1, D-024) o también *fusionar* con las reglas de §5.4? | Cuando haya más de un dispositivo con progreso |
-| 7 | Fechas en Drift | `store_date_time_values_as_text`: ISO-8601 (ordenable, recomendado para comparar timestamps de sync, §5.4) vs unix timestamps (el defecto de drift) | F1 |
+| 7 | Fechas en Drift | ~~`store_date_time_values_as_text`~~ **Resuelto (D-033):** ISO-8601 en texto (ordenable para sync, §5.4) vía `build.yaml`, no unix timestamps | ✅ F1 |
 | 8 | Segundo idioma | Empezar a usar `intl` (plurales, `DateFormat`/`NumberFormat`); el ARB y `flutter_localizations` ya están desde F0 (D-027) | Cuando haya traducción |
 | 9 | Android | Cuando el core esté estable | Posterior a F7 |
 

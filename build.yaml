@@ -1,0 +1,22 @@
+# Opciones de los builders del proyecto (D-005: `drift_dev` + `riverpod_generator`
+# vía `build_runner`).
+#
+# D-033 — almacenamiento de fechas en Drift:
+# `store_date_time_values_as_text: true` guarda los `DateTime` como texto ISO-8601
+# (UTC: `2026-10-03T09:12:33.000Z`) en lugar del unix timestamp (en segundos), que
+# es el defecto de Drift. Se elige porque:
+#   - preserva la "UTCness": con el defecto, drift devuelve siempre un valor local
+#     al releer, y pierde el origen del timestamp;
+#   - los timestamps de sync se comparan de forma determinista en texto (§5.4);
+#   - el export a JSON (§5.5) queda legible a ojo en el archivo de backup.
+# Se decide en F1, justo antes de la primera migración, cuando cambiarlo no cuesta
+# nada: con bases ya instaladas habría que migrar las columnas (§9, fila 7).
+#
+# Nada más se configura: `case_from_dart_to_sql` conserva su default `snake_case`,
+# que es justo el esquema descrito en §5.3 (`gameId` → `game_id`).
+targets:
+  $default:
+    builders:
+      drift_dev:
+        options:
+          store_date_time_values_as_text: true
